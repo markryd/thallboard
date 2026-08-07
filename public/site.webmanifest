@@ -1,6 +1,8 @@
 {
-  "name": "",
-  "short_name": "",
+  "name": "Thallboard",
+  "short_name": "Thallboard",
+  "description": "Clean fretboard for when you need the notes on the neck—no bloated tool to dig through. Works on six; made for seven, eight, and nine.",
+  "start_url": "/",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,7 +15,7 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#1c1c1c",
+  "background_color": "#1c1c1c",
   "display": "standalone"
 }
