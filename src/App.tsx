@@ -4,10 +4,16 @@ import { NoteSelector } from '@/components/controls/NoteSelector'
 import { PresetsControls } from '@/components/controls/PresetsControls'
 import { ScaleControls } from '@/components/controls/ScaleControls'
 import { TuningControls } from '@/components/controls/TuningControls'
-import { Fretboard, NoteLegend } from '@/components/fretboard/Fretboard'
+import {
+  Fretboard,
+  NoteLegend,
+  ThreeNpsLegend,
+} from '@/components/fretboard/Fretboard'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { TipJarButton } from '@/components/TipJarButton'
 import { Separator } from '@/components/ui/separator'
+import { getPitchCollection } from '@/lib/music/collections'
+import { supportsThreeNps } from '@/lib/music/threeNps'
 import {
   type AppState,
   allPresets,
@@ -31,6 +37,17 @@ export default function App() {
     () => new Set(state.highlightedNotes),
     [state.highlightedNotes],
   )
+
+  const selectedCollection = state.selectedScale
+    ? getPitchCollection(state.selectedScale.type)
+    : undefined
+  // The stored choice is kept when unavailable, so it returns with 6 strings.
+  const threeNpsLabels =
+    selectedCollection &&
+    supportsThreeNps(state.tuning.length, selectedCollection)
+      ? selectedCollection.labels
+      : null
+  const threeNpsActive = threeNpsLabels !== null && state.threeNps !== 'off'
 
   useEffect(() => {
     saveActiveState(state)
@@ -120,9 +137,16 @@ export default function App() {
             uniformSpacing={state.uniformSpacing}
             degreeColors={state.degreeColors}
             lefty={state.lefty}
+            threeNps={threeNpsActive ? state.threeNps : 'off'}
             onToggleNote={toggleNote}
           />
           <NoteLegend degreeColors={state.degreeColors} />
+          {threeNpsActive && threeNpsLabels ? (
+            <ThreeNpsLegend
+              degreeLabels={threeNpsLabels}
+              mode={state.threeNps}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -137,6 +161,8 @@ export default function App() {
             fretWindow={state.fretWindow}
             lefty={state.lefty}
             hasScaleOrChord={state.selectedScale !== null}
+            threeNps={state.threeNps}
+            threeNpsLabels={threeNpsLabels}
             onAccidentalChange={(accidentalDisplay) =>
               patch({ accidentalDisplay })
             }
@@ -148,6 +174,7 @@ export default function App() {
             onDegreeColorsChange={(degreeColors) => patch({ degreeColors })}
             onFretWindowChange={(fretWindow) => patch({ fretWindow })}
             onLeftyChange={(lefty) => patch({ lefty })}
+            onThreeNpsChange={(threeNps) => patch({ threeNps })}
           />
         </div>
 

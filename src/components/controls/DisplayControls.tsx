@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { FretWindow } from '@/lib/music/fretboard'
 import type { AccidentalDisplay } from '@/lib/music/notes'
+import { THREE_NPS_MODES, type ThreeNpsMode } from '@/lib/music/threeNps'
 import type { LabelMode } from '@/lib/presets/storage'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,9 @@ type DisplayControlsProps = {
   fretWindow: FretWindow
   lefty: boolean
   hasScaleOrChord: boolean
+  threeNps: ThreeNpsMode
+  /** Degree labels of the selected scale, or null when 3NPS does not apply. */
+  threeNpsLabels: string[] | null
   onAccidentalChange: (value: AccidentalDisplay) => void
   onLabelModeChange: (value: LabelMode) => void
   onShowAllNotesChange: (value: boolean) => void
@@ -30,6 +34,7 @@ type DisplayControlsProps = {
   onDegreeColorsChange: (value: boolean) => void
   onFretWindowChange: (value: FretWindow) => void
   onLeftyChange: (value: boolean) => void
+  onThreeNpsChange: (value: ThreeNpsMode) => void
 }
 
 function ControlField({
@@ -68,6 +73,8 @@ export function DisplayControls({
   fretWindow,
   lefty,
   hasScaleOrChord,
+  threeNps,
+  threeNpsLabels,
   onAccidentalChange,
   onLabelModeChange,
   onShowAllNotesChange,
@@ -75,7 +82,9 @@ export function DisplayControls({
   onDegreeColorsChange,
   onFretWindowChange,
   onLeftyChange,
+  onThreeNpsChange,
 }: DisplayControlsProps) {
+  const npsAvailable = threeNpsLabels !== null
   return (
     <section className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-x-8 lg:gap-y-3">
       {/* Primary controls — stay as a trio when space allows */}
@@ -185,6 +194,40 @@ export function DisplayControls({
               </p>
             ) : null}
           </div>
+        </ControlField>
+
+        <ControlField label="3NPS patterns" htmlFor="three-nps">
+          <Select
+            value={npsAvailable ? threeNps : 'off'}
+            disabled={!npsAvailable}
+            onValueChange={(value) => {
+              const mode = THREE_NPS_MODES.find((m) => m === value)
+              if (mode) onThreeNpsChange(mode)
+            }}
+          >
+            <SelectTrigger
+              id="three-nps"
+              className="h-8 w-[8.5rem]"
+              aria-label="Three-notes-per-string patterns"
+              title={
+                npsAvailable
+                  ? undefined
+                  : 'Needs a 6-string tuning and a 7-note scale'
+              }
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="off">Off</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="alternating">Alternating</SelectItem>
+              {(threeNpsLabels ?? []).map((label, i) => (
+                <SelectItem key={label} value={String(i + 1)}>
+                  Pattern {i + 1} · {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </ControlField>
       </div>
 

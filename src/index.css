@@ -78,6 +78,14 @@
   --note-muted: oklch(0.62 0.02 85 / 0.55);
   --note-stroke: oklch(0.98 0.01 85 / 0.7);
   --note-label: oklch(0.99 0.005 85);
+  /* 3NPS pattern outlines, one hue per starting degree */
+  --nps-1: oklch(0.6 0.16 25);
+  --nps-2: oklch(0.6 0.16 75);
+  --nps-3: oklch(0.6 0.16 130);
+  --nps-4: oklch(0.6 0.16 185);
+  --nps-5: oklch(0.6 0.16 235);
+  --nps-6: oklch(0.6 0.16 285);
+  --nps-7: oklch(0.6 0.16 335);
 }
 
 .dark {
@@ -119,6 +127,13 @@
   --note-muted: oklch(0.55 0 0 / 0.65);
   --note-stroke: oklch(0.12 0 0 / 0.35);
   --note-label: oklch(0.12 0 0);
+  --nps-1: oklch(0.74 0.14 25);
+  --nps-2: oklch(0.74 0.14 75);
+  --nps-3: oklch(0.74 0.14 130);
+  --nps-4: oklch(0.74 0.14 185);
+  --nps-5: oklch(0.74 0.14 235);
+  --nps-6: oklch(0.74 0.14 285);
+  --nps-7: oklch(0.74 0.14 335);
 }
 
 @layer base {

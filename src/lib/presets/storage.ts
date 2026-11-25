@@ -1,6 +1,7 @@
 import { getPitchCollection } from '@/lib/music/collections'
 import type { FretWindow } from '@/lib/music/fretboard'
 import type { AccidentalDisplay } from '@/lib/music/notes'
+import { THREE_NPS_MODES, type ThreeNpsMode } from '@/lib/music/threeNps'
 import {
   BUILTIN_PRESETS,
   DEFAULT_PRESET,
@@ -27,6 +28,7 @@ export type AppState = {
   degreeColors: boolean
   fretWindow: FretWindow
   lefty: boolean
+  threeNps: ThreeNpsMode
   activePresetId: string | null
 }
 
@@ -51,6 +53,7 @@ export function defaultAppState(): AppState {
     degreeColors: true,
     fretWindow: 'all',
     lefty: false,
+    threeNps: 'off',
     activePresetId: DEFAULT_PRESET.id,
   }
 }
@@ -230,6 +233,9 @@ export function loadActiveState(): AppState {
         ? (parsed.fretWindow as FretWindow)
         : base.fretWindow,
       lefty: typeof parsed.lefty === 'boolean' ? parsed.lefty : base.lefty,
+      threeNps: THREE_NPS_MODES.includes(parsed.threeNps as ThreeNpsMode)
+        ? (parsed.threeNps as ThreeNpsMode)
+        : base.threeNps,
       activePresetId,
     }
     if (fromLegacy) {

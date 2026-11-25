@@ -1,6 +1,8 @@
+import { useId } from 'react'
 import {
   collectionIntervalLabel,
   degreeBucket,
+  getPitchCollection,
   isInCollection,
 } from '@/lib/music/collections'
 import {
@@ -11,9 +13,16 @@ import {
   type FretWindow,
   fretXPositionsInRange,
   getStringYs,
+  openMidiNotes,
   visibleFretRange,
 } from '@/lib/music/fretboard'
 import { type AccidentalDisplay, pitchClassName } from '@/lib/music/notes'
+import {
+  selectThreeNpsPatterns,
+  supportsThreeNps,
+  type ThreeNpsMode,
+  threeNpsPatterns,
+} from '@/lib/music/threeNps'
 import { guitarStringNumber } from '@/lib/presets/builtins'
 import type { LabelMode } from '@/lib/presets/storage'
 
@@ -30,6 +39,7 @@ type FretboardProps = {
   uniformSpacing: boolean
   degreeColors: boolean
   lefty: boolean
+  threeNps: ThreeNpsMode
   onToggleNote: (pitchClass: number) => void
 }
 
@@ -38,6 +48,12 @@ const PAD_RIGHT = 16
 const PAD_TOP = 28
 const PAD_BOTTOM = 36
 const BOARD_WIDTH = 24 * 42
+/**
+ * 3NPS outlines are stroked twice as wide as they appear and clipped to their
+ * own shape, so only the inner half shows. Neighbouring patterns that share
+ * an edge then show both colours side by side instead of one hiding the other.
+ */
+const NPS_STROKE = 3
 
 function boardHeightForStrings(stringCount: number): number {
   return Math.min(280, Math.max(148, 24 + stringCount * 22))
@@ -80,8 +96,11 @@ export function Fretboard({
   uniformSpacing,
   degreeColors,
   lefty,
+  threeNps,
   onToggleNote,
 }: FretboardProps) {
+  // Unique, URL-safe prefix for clip-path ids.
+  const svgId = `fb${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const stringCount = tuning.length
   if (stringCount === 0) {
     return (
@@ -115,11 +134,60 @@ export function Fretboard({
   const highlight = computeHighlightSet(selectedScale, highlightedNotes)
   const root = selectedScale?.root ?? null
   const endX = xMap.get(viewEnd) ?? nutX + BOARD_WIDTH
+  const openX = nutX - 14
 
   function mapX(x: number): number {
     if (!lefty) return x
     return svgWidth - x
   }
+
+  /** Centre of the note circle for a visible fret, before left-hand mirroring. */
+  function noteCenterX(fret: number): number | null {
+    if (fret === 0) return openX
+    const a = xMap.get(fret - 1)
+    const b = xMap.get(fret)
+    if (a == null || b == null) return null
+    return (a + b) / 2
+  }
+
+  /** Like noteCenterX, but extrapolates past the fret window (the overflow is clipped). */
+  function anyFretCenterX(fret: number): number {
+    if (fret > viewEnd) {
+      const last = xMap.get(viewEnd) ?? endX
+      const prev = xMap.get(viewEnd - 1) ?? last
+      return (noteCenterX(viewEnd) ?? last) + (fret - viewEnd) * (last - prev)
+    }
+    if (fret < viewStart) {
+      const first = xMap.get(xRangeStart) ?? nutX
+      const next = xMap.get(xRangeStart + 1) ?? first
+      return (
+        (noteCenterX(viewStart) ?? first) - (viewStart - fret) * (next - first)
+      )
+    }
+    return noteCenterX(fret) ?? nutX
+  }
+
+  const collection = selectedScale
+    ? getPitchCollection(selectedScale.type)
+    : undefined
+  const npsPatterns =
+    threeNps !== 'off' &&
+    selectedScale !== null &&
+    collection &&
+    supportsThreeNps(stringCount, collection)
+      ? selectThreeNpsPatterns(
+          threeNpsPatterns(
+            openMidiNotes(tuning, detuneOffset),
+            selectedScale.root,
+            collection.intervals,
+            fretCount,
+          ),
+          threeNps,
+        )
+      : []
+  const npsClipLeft = viewStart === 0 ? openX - NPS_STROKE : nutX
+  const npsFillOpacity =
+    threeNps === 'all' ? 0.08 : threeNps === 'alternating' ? 0.14 : 0.2
 
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-border bg-[var(--fretboard)]/35 shadow-sm dark:bg-[var(--fretboard)]/55 dark:shadow-none">
@@ -266,6 +334,72 @@ export function Fretboard({
           )
         })}
 
+        {npsPatterns.length > 0 ? (
+          <g aria-hidden style={{ pointerEvents: 'none' }}>
+            <clipPath id={`${svgId}-nps`}>
+              <rect
+                x={Math.min(mapX(npsClipLeft), mapX(endX))}
+                y={0}
+                width={Math.abs(mapX(endX) - mapX(npsClipLeft))}
+                height={svgHeight}
+              />
+            </clipPath>
+            <g clipPath={`url(#${svgId}-nps)`}>
+              {npsPatterns.map((pattern) => {
+                // Vertices are the centres of the first and last note on each
+                // string: up the low side, then back down the high side.
+                const left: string[] = []
+                const right: string[] = []
+                for (const str of pattern.strings) {
+                  const y = ys[str.stringIndex] ?? 0
+                  left.push(`${mapX(anyFretCenterX(str.minFret))},${y}`)
+                  right.unshift(`${mapX(anyFretCenterX(str.maxFret))},${y}`)
+                }
+                const d = `M${[...left, ...right].join(' L')} Z`
+                const key = `${pattern.degree}-${pattern.strings[0]?.minFret}`
+                const clipId = `${svgId}-nps-${key}`
+                const top = pattern.strings[pattern.strings.length - 1]
+                const color = `var(--nps-${pattern.degree + 1})`
+                const labelX = top
+                  ? mapX(
+                      (anyFretCenterX(top.minFret) +
+                        anyFretCenterX(top.maxFret)) /
+                        2,
+                    )
+                  : 0
+                return (
+                  <g key={key}>
+                    <clipPath id={clipId}>
+                      <path d={d} />
+                    </clipPath>
+                    <path
+                      d={d}
+                      clipPath={`url(#${clipId})`}
+                      fill={color}
+                      fillOpacity={npsFillOpacity}
+                      stroke={color}
+                      strokeOpacity={0.9}
+                      strokeWidth={NPS_STROKE}
+                      strokeLinejoin="round"
+                    />
+                    <text
+                      x={labelX}
+                      y={PAD_TOP - 7}
+                      textAnchor="middle"
+                      fill={color}
+                      fontSize={10}
+                      fontFamily="var(--font-mono)"
+                      fontWeight={700}
+                    >
+                      {pattern.degree + 1}
+                    </text>
+                  </g>
+                )
+              })}
+            </g>
+          </g>
+        ) : null}
+
         {positions.map((stringPositions, stringIndex) =>
           stringPositions.map((pos) => {
             if (pos.fret < viewStart || pos.fret > viewEnd) return null
@@ -285,17 +419,7 @@ export function Fretboard({
 
             const y = ys[stringIndex]
             if (y == null) return null
-            const openX = nutX - 14
-            const fretX =
-              pos.fret === viewStart && viewStart === 0
-                ? openX
-                : (() => {
-                    if (pos.fret === 0) return openX
-                    const a = xMap.get(pos.fret - 1)
-                    const b = xMap.get(pos.fret)
-                    if (a == null || b == null) return null
-                    return (a + b) / 2
-                  })()
+            const fretX = noteCenterX(pos.fret)
             if (fretX == null) return null
 
             const fill = fillForRole({
@@ -424,6 +548,40 @@ export function NoteLegend({ degreeColors }: { degreeColors: boolean }) {
           — click or activate a note to toggle that pitch class everywhere
         </span>
       </li>
+    </ul>
+  )
+}
+
+/** Pattern key: number = starting scale degree on the lowest string. */
+export function ThreeNpsLegend({
+  degreeLabels,
+  mode,
+}: {
+  degreeLabels: string[]
+  mode: ThreeNpsMode
+}) {
+  return (
+    <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <li>3NPS, by starting degree on the low string:</li>
+      {degreeLabels.map((label, i) => {
+        const n = String(i + 1)
+        if (mode !== 'all' && mode !== 'alternating' && mode !== n) return null
+        return (
+          <li key={n} className="flex items-center gap-1.5">
+            <span
+              className="size-2.5 rounded-sm border"
+              style={{
+                borderColor: `var(--nps-${n})`,
+                background: `color-mix(in oklch, var(--nps-${n}) 35%, transparent)`,
+              }}
+              aria-hidden
+            />
+            <span className="font-mono">
+              {n} · {label}
+            </span>
+          </li>
+        )
+      })}
     </ul>
   )
 }
