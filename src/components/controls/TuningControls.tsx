@@ -32,6 +32,7 @@ type TuningControlsProps = {
   detuneOffset: number
   fretCount: number
   accidentalDisplay: AccidentalDisplay
+  showStringCount: boolean
   onTuningChange: (tuning: number[]) => void
   onDetuneChange: (detune: number) => void
   onFretCountChange: (frets: number) => void
@@ -47,6 +48,7 @@ export function TuningControls({
   detuneOffset,
   fretCount,
   accidentalDisplay,
+  showStringCount,
   onTuningChange,
   onDetuneChange,
   onFretCountChange,
@@ -80,28 +82,30 @@ export function TuningControls({
         Tuning
       </h2>
 
-      <div className="max-w-[7rem] space-y-2">
-        <Label htmlFor="string-count">Strings</Label>
-        <Select
-          value={String(stringCount)}
-          onValueChange={(value) => {
-            if (!value) return
-            const count = Number(value) as StringCount
-            onStringCountChange(defaultTuningForStringCount(count), 0)
-          }}
-        >
-          <SelectTrigger id="string-count" aria-label="String count">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STRING_COUNTS.map((n) => (
-              <SelectItem key={n} value={String(n)}>
-                {n}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showStringCount ? (
+        <div className="max-w-[7rem] space-y-2">
+          <Label htmlFor="string-count">Strings</Label>
+          <Select
+            value={String(stringCount)}
+            onValueChange={(value) => {
+              if (!value) return
+              const count = Number(value) as StringCount
+              onStringCountChange(defaultTuningForStringCount(count), 0)
+            }}
+          >
+            <SelectTrigger id="string-count" aria-label="String count">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STRING_COUNTS.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="fret-count">

@@ -11,7 +11,9 @@ import {
 } from '@/components/fretboard/Fretboard'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { TipJarButton } from '@/components/TipJarButton'
+import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 import { getPitchCollection } from '@/lib/music/collections'
 import { supportsThreeNps } from '@/lib/music/threeNps'
 import {
@@ -19,6 +21,7 @@ import {
   allPresets,
   applyPreset,
   createUserPreset,
+  enforceSixStrings,
   loadActiveState,
   loadUserPresets,
   saveActiveState,
@@ -32,7 +35,13 @@ export default function App() {
   const [boardStuck, setBoardStuck] = useState(false)
   const stickySentinelRef = useRef<HTMLDivElement>(null)
 
-  const presets = useMemo(() => allPresets(userPresets), [userPresets])
+  const presets = useMemo(
+    () =>
+      allPresets(userPresets).filter(
+        (p) => !state.sixStringOnly || p.stringCount === 6,
+      ),
+    [userPresets, state.sixStringOnly],
+  )
   const highlightedSet = useMemo(
     () => new Set(state.highlightedNotes),
     [state.highlightedNotes],
@@ -106,6 +115,23 @@ export default function App() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pr-1">
+            <Label
+              htmlFor="six-string-only"
+              className="text-xs whitespace-nowrap text-muted-foreground"
+            >
+              6-string only
+            </Label>
+            <Switch
+              id="six-string-only"
+              checked={state.sixStringOnly}
+              onCheckedChange={(sixStringOnly) =>
+                setState((prev) =>
+                  enforceSixStrings({ ...prev, sixStringOnly }),
+                )
+              }
+            />
+          </div>
           <TipJarButton />
           <ThemeToggle />
         </div>
@@ -206,6 +232,7 @@ export default function App() {
               detuneOffset={state.detuneOffset}
               fretCount={state.fretCount}
               accidentalDisplay={state.accidentalDisplay}
+              showStringCount={!state.sixStringOnly}
               onTuningChange={(tuning) =>
                 patch({ tuning, activePresetId: null })
               }

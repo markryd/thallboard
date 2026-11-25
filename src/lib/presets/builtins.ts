@@ -398,6 +398,10 @@ export const DEFAULT_PRESET =
     throw new Error('BUILTIN_PRESETS is empty')
   })()
 
+/** Default when six-string-only mode is on. */
+export const SIX_STRING_DEFAULT_PRESET =
+  BUILTIN_PRESETS.find((p) => p.id === '6-std-e') ?? DEFAULT_PRESET
+
 /** Guitar string number: 1 = highest/thinnest, N = lowest/thickest. */
 export function guitarStringNumber(
   arrayIndex: number,

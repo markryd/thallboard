@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import { BUILTIN_PRESETS } from './builtins'
 import {
   defaultAppState,
+  enforceSixStrings,
   loadActiveState,
   loadUserPresets,
   normalizeTuning,
@@ -98,6 +99,59 @@ describe('loadActiveState invariants', () => {
       activePresetId: '7-std-b',
     })
     expect(loadActiveState().activePresetId).toBe('7-std-b')
+  })
+})
+
+describe('six-string-only mode', () => {
+  const STD_7 = [35, 40, 45, 50, 55, 59, 64]
+
+  test('is on by default, with 6-string standard tuning', () => {
+    const base = defaultAppState()
+    expect(base.sixStringOnly).toBe(true)
+    expect(base.tuning).toEqual([40, 45, 50, 55, 59, 64])
+    expect(base.activePresetId).toBe('6-std-e')
+  })
+
+  test('defaults to on for saved state without the field', () => {
+    const { sixStringOnly: _, ...legacy } = {
+      ...defaultAppState(),
+      sixStringOnly: false,
+      tuning: STD_7,
+    }
+    saveActiveState(legacy as ReturnType<typeof defaultAppState>)
+    const loaded = loadActiveState()
+    expect(loaded.sixStringOnly).toBe(true)
+    expect(loaded.tuning).toHaveLength(6)
+  })
+
+  test('replaces a 7-string tuning on load when on', () => {
+    saveActiveState({
+      ...defaultAppState(),
+      tuning: STD_7,
+      detuneOffset: -2,
+      activePresetId: '7-std-b',
+    })
+    const loaded = loadActiveState()
+    expect(loaded.tuning).toEqual([40, 45, 50, 55, 59, 64])
+    expect(loaded.detuneOffset).toBe(0)
+    expect(loaded.activePresetId).toBe('6-std-e')
+  })
+
+  test('keeps 7-string tunings when off', () => {
+    saveActiveState({
+      ...defaultAppState(),
+      sixStringOnly: false,
+      tuning: STD_7,
+      activePresetId: '7-std-b',
+    })
+    const loaded = loadActiveState()
+    expect(loaded.tuning).toEqual(STD_7)
+    expect(loaded.activePresetId).toBe('7-std-b')
+  })
+
+  test('leaves custom 6-string tunings alone', () => {
+    const dropD = { ...defaultAppState(), tuning: [38, 45, 50, 55, 59, 64] }
+    expect(enforceSixStrings(dropD)).toBe(dropD)
   })
 })
 

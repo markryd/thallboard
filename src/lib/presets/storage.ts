@@ -4,8 +4,8 @@ import type { AccidentalDisplay } from '@/lib/music/notes'
 import { THREE_NPS_MODES, type ThreeNpsMode } from '@/lib/music/threeNps'
 import {
   BUILTIN_PRESETS,
-  DEFAULT_PRESET,
   defaultTuningForStringCount,
+  SIX_STRING_DEFAULT_PRESET,
   type StringCount,
   type TuningPreset,
 } from './builtins'
@@ -29,6 +29,8 @@ export type AppState = {
   fretWindow: FretWindow
   lefty: boolean
   threeNps: ThreeNpsMode
+  /** Hide 7- to 9-string options and keep the tuning at six strings. */
+  sixStringOnly: boolean
   activePresetId: string | null
 }
 
@@ -41,9 +43,9 @@ const FRET_WINDOWS: FretWindow[] = ['all', 'low', 'mid', 'high']
 
 export function defaultAppState(): AppState {
   return {
-    tuning: [...DEFAULT_PRESET.openNotes],
-    detuneOffset: DEFAULT_PRESET.detune,
-    fretCount: DEFAULT_PRESET.frets,
+    tuning: [...SIX_STRING_DEFAULT_PRESET.openNotes],
+    detuneOffset: SIX_STRING_DEFAULT_PRESET.detune,
+    fretCount: SIX_STRING_DEFAULT_PRESET.frets,
     selectedScale: { root: 0, type: 'minor-pentatonic' },
     highlightedNotes: [],
     accidentalDisplay: 'sharps',
@@ -54,7 +56,8 @@ export function defaultAppState(): AppState {
     fretWindow: 'all',
     lefty: false,
     threeNps: 'off',
-    activePresetId: DEFAULT_PRESET.id,
+    sixStringOnly: true,
+    activePresetId: SIX_STRING_DEFAULT_PRESET.id,
   }
 }
 
@@ -190,7 +193,7 @@ export function loadActiveState(): AppState {
       activePresetId = null
     }
 
-    const state: AppState = {
+    const state: AppState = enforceSixStrings({
       ...base,
       tuning: normalizeTuning(parsed.tuning, base.tuning),
       detuneOffset:
@@ -236,8 +239,12 @@ export function loadActiveState(): AppState {
       threeNps: THREE_NPS_MODES.includes(parsed.threeNps as ThreeNpsMode)
         ? (parsed.threeNps as ThreeNpsMode)
         : base.threeNps,
+      sixStringOnly:
+        typeof parsed.sixStringOnly === 'boolean'
+          ? parsed.sixStringOnly
+          : base.sixStringOnly,
       activePresetId,
-    }
+    })
     if (fromLegacy) {
       try {
         localStorage.setItem(ACTIVE_KEY, JSON.stringify(state))
@@ -282,4 +289,13 @@ export function applyPreset(preset: TuningPreset): Partial<AppState> {
     fretCount: preset.frets,
     activePresetId: preset.id,
   }
+}
+
+/**
+ * With six-string-only on, replace any other string count with 6-string
+ * standard tuning. Six-string tunings are left as they are.
+ */
+export function enforceSixStrings(state: AppState): AppState {
+  if (!state.sixStringOnly || state.tuning.length === 6) return state
+  return { ...state, ...applyPreset(SIX_STRING_DEFAULT_PRESET) }
 }
