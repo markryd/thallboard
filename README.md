@@ -2,7 +2,7 @@
 
 A fretboard visualizer for **extended-range guitars** — 7-, 8-, and 9-string instruments, drop tunings, and deep detunes that most online tools ignore.
 
-**Live deployment:** [thallboard.com](https://thallboard.com)
+**Live deployment:** [markryd.github.io/thallboard](https://markryd.github.io/thallboard/)
 
 ![Thallboard fretboard with C minor pentatonic on a 7-string neck](docs/screenshot.png)
 
@@ -57,7 +57,7 @@ bun run build
 bun run preview
 ```
 
-Production deploys to [thallboard.com](https://thallboard.com) via GitHub Pages on pushes to `main`.
+Production deploys to [markryd.github.io/thallboard](https://markryd.github.io/thallboard/) via GitHub Pages on pushes to `main`.
 
 ## Stack
 
